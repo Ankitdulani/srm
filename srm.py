@@ -14,44 +14,32 @@ class srm:
 		self.min_size = None
 		
 
-
 	def execute(self, image , Q=32 ):
 
 		self.shape = image.shape
 		(h,w,c) = self.shape
 		self.size=w*h
-		self.image = image.reshape(self.size, -1)
+		self.image = np.float32(image.reshape(self.size, -1))
 		self.parent = np.arange(self.size)
 		self.rank = np.ones(self.size)
 		self.Q=Q
 		self.min_size = 0.001*self.size
-		self.delta = math.log(36)+2*math.log(self.size)
+		self.delta = math.log(6)+2*math.log(self.size)
 		# file=open("out.txt","w+")
 
 		edge_list = self.get_sorted_edge_pair()
-		# print(edge_list[:])
 
-		for ptA , ptB in edge_list[0:30000]:
-			file.write(str(ptA)+" "+str(ptB)+"\n")
+		for ptA , ptB in edge_list[0:]:
 			parentA = self.get_parent(ptA)
 			parentB = self.get_parent(ptB)
 			if parentA != parentB and self.predicate(parentA,parentB):
 				self.merge(parentA, parentB)
-				# file.write("merged\n")
 
-		# self.merge_small_region()
-
-		count=0;
-		for i in xrange(self.size):
-			self.parent[i]=self.get_parent(i)
-			if self.parent[i] == i:
-				count+=1
-		print(count)
+		self.merge_small_region()
 
 		for i in xrange(self.size):
 			color = self.image[self.get_parent(i)]
 			self.image[i]= color
-			# print(color)
 
 		return self.image.reshape(self.shape[0],self.shape[1],-1)
 
@@ -61,22 +49,14 @@ class srm:
 		pairs=[]
 		count=0
 
-		for i in xrange(0,h-1):
-			for j in xrange(0,w-1):
+		for i in xrange(0,h):
+			for j in xrange(0,w):
 
 				index = i*w+j 
-				pairs.append((index, index+1))
-				pairs.append((index, index+w))
-					
-
-		# for i in xrange(0,h):
-		# 	for j in xrange(0,w):
-
-		# 		index = i*w+j 
-		# 		if i != h-1:
-		# 			pairs.append((index, index+w))
-		# 		if j != w-1:
-		# 			pairs.append((index, index+1))
+				if i != h-1:
+					pairs.append((index, index+w))
+				if j != w-1:
+					pairs.append((index, index+1))
 
 		return self.sort_edge_pair(pairs)
 
@@ -93,23 +73,21 @@ class srm:
 		return sorted(pairs, key=diff)
 
 
-	def predicate(self,ptA, ptB,file):
+	def predicate(self,ptA, ptB):
 		predicate_A=self.get_predicate_value(ptA)
 		predicate_B= self.get_predicate_value(ptB)
-		# file.write("valuw"+str(predicate_A) +" "+str(predicate_B)+" "+str(predicate_A+predicate_B)+"\n")
 		comp = (self.image[ptA] - self.image[ptB] )**2
 		return (comp < (predicate_A+predicate_B)).all()
 
 
 	def get_predicate_value(self,ptA):
-		return (256**2/float(2*self.Q*self.rank[ptA]))*(min(256,self.rank[ptA])*math.log(self.rank[ptA]+1)+self.delta)
+		return (256.0**2/float(2*self.Q*self.rank[ptA]))*(min(256,self.rank[ptA])*math.log(self.rank[ptA]+1)+self.delta)
 
-	def merge(self,ptA,ptB,file=None):
+	def merge(self,ptA,ptB):
 		s1 = self.rank[ptA]
 		s2 = self.rank[ptB]
-		# file.write("rank "+str(s1)+" "+str(s2)+"\n")
 		color = (self.image[ptA]*s1 +self.image[ptB]*s2)/float(s1+s2)
-		# file.write(str(color)+"\n")
+
 		if  s1 < s2:
 			ptA, ptB = ptB , ptA
 
